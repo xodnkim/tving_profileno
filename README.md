@@ -10,14 +10,14 @@ TVING 웹페이지에 로그인한 뒤, 실제 사용자처럼 마이페이지�
 
 ```mermaid
 flowchart TD
-    A["main.py 실행"] --> B["메인 페이지 접속"]
-    B -->|로그인 버튼 클릭| C["로그인 페이지 이동"]
-    C -->|티빙 아이디로 로그인| D["ID / PW 입력 및 제출"]
-    D --> E["로그인 완료 (메인 복귀)"]
-    E -->|프로필 아이콘 클릭| F["드롭다운 메뉴 열기"]
-    F -->|'MY' 메뉴 클릭| G["마이페이지(/my) 진입"]
-    G -->|Network Intercept| H["/v2/user/info API 응답 가로채기"]
-    H --> I["profileNo 추출 및 출력"]
+    A["1. CLI 실행: main.py"] --> B["2. 메인 페이지 진입"]
+    B -->|data-testid='nav-login-button' 클릭| C["3. 로그인 경로 선택"]
+    C -->|티빙 아이디로 로그인 클릭| D["4. 로그인 폼 입력 및 제출"]
+    D --> E["5. 로그인 완료 (메인 화면)"]
+    E -->|data-testid='nav-profile-menu-trigger' 클릭| F["6. 프로필 드롭다운 메뉴 오픈"]
+    F -->|data-testid='nav-profile-menu-my' 클릭| G["7. 마이페이지(/my) UI 진입"]
+    G -->|Network Interception| H["8. /v2/user/info 백엔드 API 응답 가로채기"]
+    H --> I["9. profileNo 추출 및 콘솔/JSON 리포트"]
 ```
 
 ---
