@@ -1,0 +1,25 @@
+# Environment Variables & Secrets
+.env
+*.env
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Test artifacts & screenshots
+artifacts/
+screenshots/
+*.png
+*.log
+
+# Output files (generated at runtime)
+result.json
+*_report.json
+*_analysis.json
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
