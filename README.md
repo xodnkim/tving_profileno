@@ -5,9 +5,9 @@
 
 ---
 
-## 🌟 1. 100% 리얼 E2E UI 플로우 및 아키텍처
+## 🌟 1. E2E UI 플로우 및 아키텍처
 
-본 시스템은 URL 강제 이동 없이, **실제 사용자의 웹 이용 흐름과 동일한 100% 순수 E2E UI 플로우**를 수행합니다.
+**실제 사용자의 웹 이용 흐름과 동일한 100% 순수 E2E UI 플로우**를 수행.
 
 ```mermaid
 flowchart TD
@@ -23,20 +23,17 @@ flowchart TD
 
 ---
 
-## 🎯 2. 주요 핵심 특징 및 차별화 포인트
+## 🎯 2. 주요 핵심 특징
 
-### 1) QA 엔지니어링 표준 셀렉터 (`data-testid`) 100% 적용
-- 불안정한 CSS 클래스나 변경되기 쉬운 텍스트 셀렉터 대신, TVING 프론트엔드/QA팀이 심어둔 고유 식별자(`data-testid`)를 정밀 타겟팅합니다:
+### 1) 표준 셀렉터 (`data-testid`) 적용
+- 불안정한 CSS 클래스나 변경되기 쉬운 텍스트 셀렉터 대신, TVING 프론트엔드/QA팀이 심어둔 것으로 판단되는 고유 식별자(`data-testid`)를 사용.
   - 메인 로그인 버튼: `[data-testid='nav-login-button']`
   - 프로필 메뉴 트리거: `[data-testid='nav-profile-menu-trigger']`
   - 마이페이지 메뉴 링크: `[data-testid='nav-profile-menu-my']`
 
-### 2) URL 직접 이동 없는 '진정한 End-to-End (E2E) UI 플로우'
-- 로그인 후 단순히 `page.goto('/my')`로 때려 넣는 방식이 아니라, **로그인 후 우측 상단 프로필 아이콘(`nav-profile-menu-trigger`)을 클릭하고 드롭다운에서 [MY](`nav-profile-menu-my`)를 직접 클릭**하여 진입합니다 (만약의 경우를 대비한 URL 폴백 내장).
-
-### 3) 대화형 인터랙티브 CLI (UX & CI/CD 양립)
-- 별도 인자 없이 `python main.py`만 실행하면, 터미널에서 순차적으로 ID와 비밀번호를 묻는 인터랙티브 모드가 작동합니다 (`getpass` 마스킹).
-- Jenkins, GitHub Actions 등 무인 배치 환경에서는 `-u`, `-p` 인자를 전달하면 프롬프트 없이 즉시 실행됩니다.
+### 2) 대화형 인터랙티브 CLI (UX & CI/CD 양립)
+- 별도 인자 없이 `python main.py`만 실행하면, 터미널에서 순차적으로 ID와 비밀번호를 묻는 인터랙티브 모드가 작동.
+- Jenkins, GitHub Actions 등 무인 배치 환경에서는 `-u`, `-p` 인자를 전달하면 프롬프트 없이 즉시 실행.
 
 ### 4) Network Interception 기반 백엔드 API 추출 (정석 파이프라인)
 - 프론트엔드 DOM 파싱 대신, 브라우저 네트워크 계층에서 TVING 백엔드 API (`https://api.tving.com/v2/user/info`)의 JSON 응답을 실시간으로 가로채어 `profileNo`를 100% 무결성으로 추출합니다.
