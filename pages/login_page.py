@@ -91,12 +91,10 @@ class LoginPage(BasePage):
                         self.safe_click(self.SUBMIT_BTN)
                         continue
 
-                    screenshot_path = self.take_screenshot("login_failed")
-                    raise RuntimeError(f"로그인 실패: {err_msg} (스크린샷: {screenshot_path})")
+                    raise RuntimeError(f"로그인 실패: {err_msg}")
             except RuntimeError:
                 raise
             except Exception:
                 pass
 
-        screenshot_path = self.take_screenshot("login_timeout")
-        raise RuntimeError(f"로그인 후 응답 대기 시간 초과 (스크린샷: {screenshot_path})")
+        raise RuntimeError("로그인 후 응답 대기 시간 초과")

@@ -50,7 +50,7 @@ tving_auto/
 ├── config.py                # CLI 인자 및 터미널 입력 처리
 ├── models.py                # 추출 결과 데이터 모델
 ├── pages/                   # Page Object Model (페이지별 액션 분리)
-│   ├── base_page.py         # 브라우저 공통 제어 및 스크린샷 기능
+│   ├── base_page.py         # 브라우저 공통 제어 및 유틸리티
 │   ├── login_page.py        # 로그인 화면 제어 및 예외 처리
 │   └── my_page.py           # 마이페이지 진입 및 API 가로채기
 ├── accounts.example.json    # 배치 검증용 샘플 데이터

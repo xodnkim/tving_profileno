@@ -13,8 +13,7 @@ class Config:
         password: Optional[str] = None,
         headless: bool = True,
         timeout_ms: int = 30000,
-        output_path: Optional[str] = None,
-        save_screenshot: bool = True
+        output_path: Optional[str] = None
     ):
         # 1. Username: CLI 인자 우선, 없으면 대화형 터미널 입력
         if username:
@@ -32,7 +31,6 @@ class Config:
         self.headless = headless
         self.timeout_ms = timeout_ms
         self.output_path = output_path
-        self.save_screenshot = save_screenshot
 
     def __repr__(self) -> str:
         masked_pw = "*" * len(self.password) if self.password else "None"

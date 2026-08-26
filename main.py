@@ -86,10 +86,6 @@ def run_automation(config: Config) -> ExtractionResult:
             # 5. 백엔드 API 응답 가로채기(/v2/user/info)를 통한 profileNo 추출
             primary_profile, all_profiles = my_page.extract_profile_from_api()
 
-            # 6. 완료 스크린샷 캡처
-            if config.save_screenshot:
-                my_page.take_screenshot("success_mypage")
-
             elapsed = round(time.time() - start_time, 2)
             result.success = True
             result.profile = primary_profile
@@ -132,7 +128,6 @@ def print_summary(result: ExtractionResult):
         print("=" * 60)
         print(f" [-] 에러 원인: {result.error_message}")
         print(f" [-] 총 소요 시간: {result.elapsed_seconds}초")
-        print(" [-] artifacts/screenshots/ 디렉토리의 실패 스크린샷을 확인하세요.")
     print("=" * 60 + "\n")
 
 

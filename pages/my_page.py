@@ -85,10 +85,8 @@ class MyPage(BasePage):
             self.page.wait_for_timeout(200)
 
         if not self.captured_user_info_apis:
-            screenshot_path = self.take_screenshot("api_not_captured")
             raise RuntimeError(
-                f"TVING 유저 정보 API({self.TARGET_API_ENDPOINT}) 응답을 수신하지 못했습니다. "
-                f"(스크린샷: {screenshot_path})"
+                f"TVING 유저 정보 API({self.TARGET_API_ENDPOINT}) 응답을 수신하지 못했습니다."
             )
 
         # 가장 최근 수신된 API 데이터부터 탐색
@@ -133,7 +131,6 @@ class MyPage(BasePage):
                 logger.info(f"API 추출 성공: profileNo={primary.profile_no}, 프로필명={primary.profile_name}")
                 return primary, all_profiles
 
-        screenshot_path = self.take_screenshot("profile_no_missing_in_api")
         raise RuntimeError(
-            f"API 응답 내에 profileNo 필드가 존재하지 않습니다. (스크린샷: {screenshot_path})"
+            f"API 응답 내에 profileNo 필드가 존재하지 않습니다."
         )
