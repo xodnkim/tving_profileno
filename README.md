@@ -1,7 +1,7 @@
 # 🎬 TVING 자동 로그인 및 profileNo 추출 자동화 시스템
 
 > **채용 사전 과제 제출용 프로젝트**  
-> TVING(티빙) 웹페이지에 안전하게 로그인하고, 실제 사용자와 동일하게 프로필 메뉴를 거쳐 마이페이지로 이동한 뒤 백엔드 API(`/v2/user/info`)의 응답을 실시간으로 가로채(Network Interception) `profileNo` 및 프로필 정보를 신뢰성 높게 추출하는 E2E 자동화 도구입니다.
+> TVING(티빙) 웹페이지에 로그인하고, 실제 사용자와 동일하게 프로필 메뉴를 거쳐 마이페이지로 이동한 뒤 API 응답에서 `profileNo`추출하는 E2E 자동화.
 
 ---
 
@@ -14,11 +14,11 @@ flowchart TD
     A["1. CLI 실행: main.py"] --> B["2. 메인 페이지 진입"]
     B -->|data-testid='nav-login-button' 클릭| C["3. 로그인 경로 선택"]
     C -->|티빙 아이디로 로그인 클릭| D["4. 로그인 폼 입력 및 제출"]
-    D -->|일시적 서버 오류 감지 시 1.5초 쿨다운 자동 복구| E["5. 로그인 완료 (메인 화면)"]
+    D --> E["5. 로그인 완료 (메인 화면)"]
     E -->|data-testid='nav-profile-menu-trigger' 클릭| F["6. 프로필 드롭다운 메뉴 오픈"]
     F -->|data-testid='nav-profile-menu-my' 클릭| G["7. 마이페이지(/my) UI 진입"]
     G -->|Network Interception| H["8. /v2/user/info 백엔드 API 응답 가로채기"]
-    H --> I["9. profileNo (511756099) 및 상세 정보 콘솔/JSON 리포트"]
+    H --> I["9. profileNo  및 상세 정보 콘솔/JSON 리포트"]
 ```
 
 ---
