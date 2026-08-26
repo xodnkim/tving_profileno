@@ -1,144 +1,146 @@
-# 🎬 TVING 자동 로그인 및 profileNo 추출 자동화 시스템
+﻿# TVING 자동 로그인 및 profileNo 추출 자동화
 
-> **채용 사전 과제 제출용 프로젝트**  
-> TVING(티빙) 웹페이지에 로그인하고, 실제 사용자와 동일하게 프로필 메뉴를 거쳐 마이페이지로 이동한 뒤 API 응답에서 `profileNo`추출하는 E2E 자동화.
+TVING 웹페이지에 로그인한 뒤, 실제 사용자처럼 마이페이지로 이동하여 백엔드 API 응답에서 profileNo를 추출하는 자동화 프로젝트입니다.
 
 ---
 
-## 🌟 1. E2E UI 플로우 및 아키텍처
+## 1. 실행 흐름
 
-**실제 사용자의 웹 이용 흐름과 동일한 100% 순수 E2E UI 플로우**를 수행.
+실제 사용자의 화면 탐색 흐름과 동일하게 UI를 조작하여 마이페이지에 진입한 뒤 데이터를 추출합니다.
 
-```mermaid
+`mermaid
 flowchart TD
-    A["1. CLI 실행: main.py"] --> B["2. 메인 페이지 진입"]
-    B -->|data-testid='nav-login-button' 클릭| C["3. 로그인 경로 선택"]
-    C -->|티빙 아이디로 로그인 클릭| D["4. 로그인 폼 입력 및 제출"]
-    D --> E["5. 로그인 완료 (메인 화면)"]
-    E -->|data-testid='nav-profile-menu-trigger' 클릭| F["6. 프로필 드롭다운 메뉴 오픈"]
-    F -->|data-testid='nav-profile-menu-my' 클릭| G["7. 마이페이지(/my) UI 진입"]
-    G -->|Network Interception| H["8. /v2/user/info 백엔드 API 응답 가로채기"]
-    H --> I["9. profileNo  및 상세 정보 콘솔/JSON 리포트"]
-```
+    A["main.py 실행"] --> B["메인 페이지 접속"]
+    B -->|로그인 버튼 클릭| C["로그인 페이지 이동"]
+    C -->|티빙 아이디로 로그인| D["ID / PW 입력 및 제출"]
+    D --> E["로그인 완료 (메인 복귀)"]
+    E -->|프로필 아이콘 클릭| F["드롭다운 메뉴 열기"]
+    F -->|'MY' 메뉴 클릭| G["마이페이지(/my) 진입"]
+    G -->|Network Intercept| H["/v2/user/info API 응답 가로채기"]
+    H --> I["profileNo 추출 및 출력"]
+`
 
 ---
 
-## 🎯 2. 주요 핵심 특징
+## 2. 주요 구현 포인트
 
-### 1) 표준 셀렉터 (`data-testid`) 적용
-- 불안정한 CSS 클래스나 변경되기 쉬운 텍스트 셀렉터 대신, TVING 프론트엔드/QA팀이 심어둔 것으로 판단되는 고유 식별자(`data-testid`)를 사용.
-  - 메인 로그인 버튼: `[data-testid='nav-login-button']`
-  - 프로필 메뉴 트리거: `[data-testid='nav-profile-menu-trigger']`
-  - 마이페이지 메뉴 링크: `[data-testid='nav-profile-menu-my']`
+### 1) 안정적인 셀렉터 (data-testid) 활용
+- 화면 변경이나 다국어 처리 시 깨지기 쉬운 텍스트나 클래스명 대신, 개발/QA용으로 심어져 있는 고유 속성(data-testid)을 우선 사용했습니다.
+  - 메인 로그인 버튼: [data-testid='nav-login-button']
+  - 프로필 메뉴 트리거: [data-testid='nav-profile-menu-trigger']
+  - 마이페이지 링크: [data-testid='nav-profile-menu-my']
 
-### 2) 대화형 인터랙티브 CLI (UX & CI/CD 양립)
-- 별도 인자 없이 `python main.py`만 실행하면, 터미널에서 순차적으로 ID와 비밀번호를 묻는 인터랙티브 모드가 작동.
-- Jenkins, GitHub Actions 등 무인 배치 환경에서는 `-u`, `-p` 인자를 전달하면 프롬프트 없이 즉시 실행.
+### 2) 실제 사용자 탐색 플로우 반영
+- 로그인 후 URL(	ving.com/my)로 바로 건너뛰지 않고, 우측 상단 프로필 아이콘을 눌러 나타나는 'MY' 메뉴를 직접 클릭해 이동하도록 구성했습니다. (UI 탐색 실패 시 URL 직접 이동으로 자동 대체)
 
-### 4) Network Interception 기반 백엔드 API 추출 (정석 파이프라인)
-- 프론트엔드 DOM 파싱 대신, 브라우저 네트워크 계층에서 TVING 백엔드 API (`https://api.tving.com/v2/user/info`)의 JSON 응답을 실시간으로 가로채어 `profileNo`를 100% 무결성으로 추출합니다.
+### 3) API 응답(Network Interception)에서 데이터 추출
+- 마이페이지 화면의 DOM 텍스트를 파싱하는 방식 대신, 브라우저가 주고받는 네트워크 패킷 중 유저 정보 API(pi.tving.com/v2/user/info) 응답을 직접 가로채서 profileNo를 안전하게 가져옵니다.
 
-### 5) Google reCAPTCHA 대응 Self-Healing (자율 복구)
-- 단시간 반복 로그인 시 TVING 인증 서버가 띄우는 "일시적인 서비스 오류" 모달을 감지하여 자동으로 확인 후 1.5초 쿨다운을 거쳐 재시도하는 복구 메커니즘을 내장했습니다.
+### 4) 간헐적 오류 팝업 자동 처리
+- 로그인 시 종종 발생하는 "일시적인 서비스 오류" 팝업 감지 시, 자동으로 확인 버튼을 누르고 잠시 대기 후 재시도하도록 예외 처리를 추가했습니다.
 
 ---
 
-## 📁 3. 프로젝트 구조 (Page Object Model)
+## 3. 파일 구조
 
-```
+`	ext
 tving_auto/
-├── requirements.txt           # 의존성 패키지 (playwright)
-├── README.md                  # 본 문서
-├── main.py                    # CLI 진입점 및 실행 오케스트레이션
-├── config.py                  # 대화형 프롬프트 및 CLI 설정 관리
-├── models.py                  # ProfileInfo, ExtractionResult 데이터 모델
-├── pages/                     # Page Object Model
-│   ├── __init__.py
-│   ├── base_page.py           # 스마트 대기 및 공통 브라우저 제어
-│   ├── login_page.py          # data-testid 기반 로그인 및 팝업 자율 복구
-│   └── my_page.py             # 프로필 메뉴 경유 진입 및 Network API 가로채기
-├── result.json                # 추출 결과 저장 파일 (선택)
-└── artifacts/
-    └── screenshots/           # 성공/실패 시점 스크린샷 자동 보관소
-```
+├── main.py                  # 과제 기본 실행 스크립트 (POM 기반 E2E 플로우)
+├── quick.py                 # 단일/배치 빠른 추출 스크립트
+├── config.py                # CLI 인자 및 터미널 입력 처리
+├── models.py                # 추출 결과 데이터 모델
+├── pages/                   # Page Object Model (페이지별 액션 분리)
+│   ├── base_page.py         # 브라우저 공통 제어 및 스크린샷 기능
+│   ├── login_page.py        # 로그인 화면 제어 및 예외 처리
+│   └── my_page.py           # 마이페이지 진입 및 API 가로채기
+├── accounts.example.json    # 배치 검증용 샘플 데이터
+└── requirements.txt         # 의존성 패키지 (Playwright)
+`
 
 ---
 
-## 🚀 4. 설치 및 실행 가이드
+## 4. 실행 방법
 
-### 1) 환경 준비 및 패키지 설치
-```bash
+### 1) 패키지 설치
+`ash
 # 가상환경 생성 및 활성화
 python -m venv venv
 venv\Scripts\activate      # Windows
 # source venv/bin/activate # Mac/Linux
 
-# 의존성 패키지 설치
+# 필수 패키지 및 브라우저 설치
 pip install -r requirements.txt
-
-# Playwright Chromium 브라우저 설치
 playwright install chromium
-```
+`
 
-### 2) 두 가지 실행 모드
+### 2) 실행 모드
 
-| | `main.py` | `quick.py` |
+상황에 맞게 두 가지 스크립트를 제공합니다.
+
+| 구분 | main.py (과제 기본) | quick.py (빠른 검증) |
 | :--- | :--- | :--- |
-| **목적** | 완전한 E2E UI 검증 | profileNo만 빠르게 확보 |
-| **마이페이지 진입** | ✅ UI 클릭으로 진입 | ❌ 로그인 직후 즉시 종료 |
-| **소요 시간** | ~20초 | **~10초** |
-| **출력** | 상세 리포트 + JSON 저장 | profileNo 핵심 정보만 |
-| **구조** | POM (다중 파일) | 단일 파일 |
+| **용도** | 전체 E2E UI 탐색 및 검증 | 단일/다중 계정 빠른 profileNo 추출 |
+| **마이페이지 진입** | UI 메뉴를 거쳐 직접 이동 | 로그인 직후 API만 포착하여 즉시 종료 |
+| **소요 시간** | 약 20초 | 약 10초 |
+
+#### [기본] main.py 실행
+`ash
+# 터미널에서 순차적으로 ID, PW 입력 (비밀번호 마스킹)
+python main.py
+
+# CLI 인자로 직접 전달
+python main.py -u "아이디" -p "비밀번호"
+
+# 브라우저 화면을 보면서 실행
+python main.py -u "아이디" -p "비밀번호" --no-headless
+
+# 결과를 JSON 파일로 저장
+python main.py -u "아이디" -p "비밀번호" -o result.json
+`
+
+#### [선택] quick.py 실행 (빠른 추출 및 배치 검증)
+`ash
+# 단일 계정 빠른 추출
+python quick.py -u "아이디" -p "비밀번호"
+
+# 여러 계정 일괄 비교 검증 (배치 모드)
+python quick.py --file accounts.json
+`
+
+> **배치 검증 모드 (--file)**  
+> 사내 테스트 계정 목록(ccounts.json)을 읽어 순차적으로 로그인하고, 실제 발급된 profileNo가 DB 기준 기대값(expected_profile_no)과 일치하는지 비교하여 PASS/FAIL 결과를 출력합니다.
 
 ---
 
-#### `main.py` — 완전한 E2E UI 검증 (과제 요구사항 100% 충족)
-```bash
-python main.py                                          # 대화형 입력
-python main.py -u "xodn9900" -p "pw" --output result.json  # CLI 인자 + JSON 저장
-python main.py -u "xodn9900" -p "pw" --no-headless    # 브라우저 화면 표시
-```
+## 5. 실행 결과 예시
 
-#### `quick.py` — profileNo만 빠르게 (실무 API 테스트 픽스처용)
-```bash
-python quick.py                        # 대화형 입력
-python quick.py -u "xodn9900" -p "pw" # CLI 인자
-python quick.py -u "xodn9900" -p "pw" --json  # JSON 출력 (파이프라인 연계)
-```
+### main.py 실행 결과
+`	ext
+21:45:01 [INFO] 메인 페이지의 로그인 버튼 클릭 (Selector: [data-testid='nav-login-button'])
+21:45:03 [INFO] '티빙 아이디로 로그인' 옵션 선택
+21:45:03 [INFO] 로그인 시도 - 사용자 ID: xodn9900
+21:45:19 [INFO] 로그인 성공!
+21:45:19 [INFO] 마이페이지 진입 플로우 시작 (UI 프로필 메뉴 경유)...
+21:45:19 [INFO] 프로필 아이콘 클릭/호버: [data-testid='nav-profile-menu-trigger']
+21:45:20 [INFO] 드롭다운 메뉴의 'MY' 클릭: [data-testid='nav-profile-menu-my']
+21:45:20 [INFO] 마이페이지 UI 진입 성공: https://www.tving.com/my
+21:45:20 [INFO] 백엔드 API(/v2/user/info) 응답 포착 완료
 
-```python
-# 다른 테스트 코드에서 import하여 사용
-from quick import extract_profile_no
+============================================================
+          TVING profileNo 추출 결과
+============================================================
+ [★] profileNo       : 511756099
+ [-] 프로필 명       : 딴딴
+ [-] 사용자 ID       : xodn9900
+ [-] 사용자 명       : 김태우
+ [-] 회원 번호(userNo): 511756099
+ [-] 데이터 출처     : 백엔드 API (/v2/user/info)
+ [-] 총 소요 시간    : 21.04초
+============================================================
+`
 
-profile = extract_profile_no("xodn9900", "password")
-print(profile["profile_no"])    # → "511756099"
-print(profile["profile_token"]) # → Bearer 토큰 (후속 API 호출에 활용)
-```
-
-#### `quick.py --file` — 배치 검증 모드 (다중 계정 PASS/FAIL 검증)
-
-```bash
-python quick.py --file accounts.json
-```
-
-**`accounts.json` 구조** (`accounts.example.json` 참고):
-```json
-[
-  {
-    "id": "test_basic_01",
-    "password": "password1234",
-    "expected_profile_no": "511000001",
-    "desc": "베이직 이용권 계정"
-  }
-]
-```
-
-> **⚠️ `expected_profile_no`는 반드시 DB에서 직접 확인한 값을 수동으로 기입하세요.**  
-> 시스템이 자동 생성한 값으로 검증하면, 버그가 있어도 함께 통과하는 잘못된 테스트가 됩니다.  
-> DB팀 또는 운영팀으로부터 직접 발급받은 값과 대조하는 것이 올바른 방법입니다.
-
-**출력 예시:**
-```text
+### quick.py --file 배치 실행 결과
+`	ext
 =================================================================
   TVING profileNo 배치 검증 시작 (총 3개 계정)
 =================================================================
@@ -153,101 +155,23 @@ python quick.py --file accounts.json
   상태   : FAIL
   기대값 : 511000002
   실제값 : 511099999
-  차이   : expected=511000002  /  actual=511099999  <-- 불일치 감지!
+  차이   : expected=511000002 / actual=511099999  <-- 불일치 감지
   소요   : 11.2s
 
 =================================================================
-  결과: 3건 중  PASS 2  /  FAIL 1  /  ERROR 0
+  결과: 3건 중 PASS 2 / FAIL 1 / ERROR 0
 =================================================================
-  [O] test_basic_01              | PASS
-  [X] test_premium_01            | FAIL  (기대: 511000002 / 실제: 511099999)
-  [O] test_kids_01               | PASS
-=================================================================
-```
-
-**사용 사례:**
-1. **정기 헬스체크 배치**: 매일 새벽 사내 테스트 계정 전수 검증 → 프로필 꼬임/계정 만료 자동 감지
-2. **배포 후 스모크 테스트**: 신규 배포 후 핵심 계정들의 로그인 → profileNo 매핑이 정상인지 빠르게 검증
-
-> **`accounts.json`은 `.gitignore`에 포함됩니다.** 실계정 정보가 담기므로 절대 git에 올리지 않습니다.  
-> 레포에는 더미 데이터가 담긴 `accounts.example.json`만 포함됩니다.
+`
 
 ---
 
-## 📊 5. 실행 결과 예시
+## 6. 추가 분석 (네트워크 패킷 분석)
 
-### 터미널 출력
-```text
-21:45:01 [INFO] 메인 페이지의 로그인 버튼 클릭 (Selector: [data-testid='nav-login-button'])
-21:45:03 [INFO] '티빙 아이디로 로그인' 옵션 선택 (Selector: a[href*='/account/login/tving'])
-21:45:03 [INFO] 로그인 시도 - 사용자 ID: xodn9900
-21:45:19 [INFO] 로그인 성공!
-21:45:19 [INFO] 마이페이지 진입 플로우 시작 (UI 프로필 메뉴 경유)...
-21:45:19 [INFO] 프로필 아이콘 클릭/호버: [data-testid='nav-profile-menu-trigger']
-21:45:20 [INFO] 드롭다운 메뉴의 'MY' 클릭: [data-testid='nav-profile-menu-my']
-21:45:20 [INFO] 마이페이지 UI 진입 성공: https://www.tving.com/my
-21:45:20 [INFO] 백엔드 API(/v2/user/info) 응답 데이터 파싱 시작...
-21:45:20 [INFO] API 추출 성공: profileNo=511756099, 프로필명=기본프로필
+과제를 진행하며 실제 네트워크 요청을 분석해본 결과, 다음과 같은 인증 구조를 확인했습니다:
 
-============================================================
-          🎉 TVING profileNo 추출 성공! 🎉
-============================================================
- [★] profileNo       : 511756099
- [-] 프로필 명       : 기본프로필
- [-] 사용자 ID       : xodn9900
- [-] 사용자 명       : 김태우
- [-] 회원 번호(userNo): 511756099
- [-] 데이터 출처     : 백엔드 API (/v2/user/info)
- [-] 총 소요 시간    : 21.04초
-============================================================
-```
-
----
-
-## 🔬 6. [Deep Dive] TVING API 인증 아키텍처 심층 분석
-
-> 본 과제를 구현하며 실제 TVING 웹 트래픽 패킷을 전수조사한 결과, 서비스 아키텍처에 대한 중요한 인사이트를 확인했습니다.
-
-### `profileNo` vs `profileToken`의 역할 분리
-
-```text
-[로그인 성공 후 /v2/user/info API 응답]
-{
-  "body": {
-    "profile": {
-      "profileNo":    "511756099",                  <- 식별자 (ID)
-      "profileToken": "B3JQcwg...",                 <- 인증 자격증명 (Auth Key)
-    }
-  }
-}
-
-[이후 모든 API 호출: 마이페이지, 시청기록, 찜 목록 등]
-GET /bff/web/v3/my/watch/history/vod
-Authorization: Bearer B3JQcwg...   <- profileToken이 이곳에 담김
-```
-
-패킷 전수조사 결과, TVING 웹은 후속 API 호출 시 `profileNo`를 URL 파라미터로 전달하지 않습니다.
-대신 `profileToken`을 `Authorization: Bearer` 헤더에 담아 전송하며, 서버가 이를 디코딩해 프로필을 식별합니다.
-
-| 값 | 역할 | 실제 사용 위치 |
-| :--- | :--- | :--- |
-| `profileNo` | 프로필 고유 식별자 (PK) | API **응답**에 등장. 올바른 프로필이 매핑됐는지 **검증(Assertion)** 용도 |
-| `profileToken` | 프로필 인증 자격증명 | 모든 후속 API 요청의 **`Authorization` 헤더**에 포함 |
-
-### 이 과제의 실무적 의미
-
-1. **E2E 인증 검증 (Auth Assertion)**: 로그인 완료 후 해당 계정에 올바른 `profileNo`가 정상 매핑됐는지 자동으로 검증하는 E2E 테스트입니다.
-2. **테스트 계정 헬스체크**: 다수의 테스트 계정이 정상 상태인지 주기적으로 확인하는 배치 도구로 활용됩니다.
-3. **실무 확장 가능성**: `profileToken`을 활용하면, 후속 API 테스트(시청기록, 찜하기, VOD 재생 등) 파이프라인의 시작점이 됩니다.
-
-```python
-# 실무 확장 예시: pytest fixture 연계
-profile = extract_profile(username, password)
-
-# profileNo: 올바른 계정인지 단언(Assertion)
-assert profile.profile_no == expected_profile_no
-
-# profileToken: 후속 API 테스트의 인증 헤더로 활용
-headers = {"Authorization": f"Bearer {profile.profile_token}"}
-response = requests.get("https://api.tving.com/bff/web/v3/my/watch/history/vod", headers=headers)
-```
+1. **profileNo의 용도**:
+   - 웹 화면에서 시청 내역이나 찜 목록 등을 조회할 때, URL 파라미터로 profileNo를 직접 보내지 않습니다.
+   - profileNo는 주로 계정별 프로필 매핑 상태를 검증(Assertion)하거나 유저를 식별하는 Primary Key 역할을 합니다.
+2. **실제 API 통신 (profileToken)**:
+   - 실제 후속 API 호출 시에는 로그인 응답에 함께 포함된 profileToken을 Authorization: Bearer {token} 형태로 헤더에 담아 통신합니다.
+   - 본 프로젝트의 ProfileInfo 모델에는 향후 API 테스트 연계를 고려해 profile_token 값도 함께 수집할 수 있도록 준비해 두었습니다.
