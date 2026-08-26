@@ -2,6 +2,9 @@
 .env
 *.env
 
+# 배치 검증용 실계정 파일 (절대 git에 올리지 않음 - accounts.example.json만 커밋)
+accounts.json
+
 # Python bytecode & cache
 __pycache__/
 *.py[cod]
