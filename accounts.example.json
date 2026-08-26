@@ -1,17 +1,20 @@
-﻿[
+[
   {
     "id": "test_basic_01",
     "password": "password1234",
-    "expected_profile_no": "511000001"
+    "expected_profile_no": "511000001",
+    "desc": "베이직 이용권 계정"
   },
   {
     "id": "test_premium_01",
     "password": "password1234",
-    "expected_profile_no": "511000002"
+    "expected_profile_no": "511000002",
+    "desc": "프리미엄 이용권 계정"
   },
   {
     "id": "test_kids_01",
     "password": "password1234",
-    "expected_profile_no": "511000003"
+    "expected_profile_no": "511000003",
+    "desc": "키즈 전용 프로필 계정"
   }
 ]

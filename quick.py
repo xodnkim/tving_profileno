@@ -1,4 +1,4 @@
-﻿"""
+"""
 quick.py - 가장 빠르게 profileNo를 추출하고 기대값과 비교 검증하는 스크립트
 
 [단일 계정 모드]
@@ -144,7 +144,7 @@ def run_batch(file_path: str):
     expected_profile_no는 DB에서 직접 확인한 값을 수동 기입합니다.
     """
     try:
-        with open(file_path, encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8-sig") as f:
             accounts = json.load(f)
     except FileNotFoundError:
         print(f"[ERROR] 파일을 찾을 수 없습니다: {file_path}")
