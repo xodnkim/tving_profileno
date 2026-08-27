@@ -2,19 +2,22 @@
   {
     "id": "test_basic_01",
     "password": "password1234",
+    "target_profile": null,
     "expected_profile_no": "511000001",
-    "desc": "베이직 이용권 계정"
+    "desc": "단일 프로필 계정 (기본)"
   },
   {
-    "id": "test_premium_01",
+    "id": "test_family_01",
     "password": "password1234",
+    "target_profile": "키즈",
     "expected_profile_no": "511000002",
-    "desc": "프리미엄 이용권 계정"
+    "desc": "다중 프로필 계정 - 특정 프로필('키즈') 지정 선택"
   },
   {
-    "id": "test_kids_01",
+    "id": "test_family_02",
     "password": "password1234",
+    "target_profile": null,
     "expected_profile_no": "511000003",
-    "desc": "키즈 전용 프로필 계정"
+    "desc": "다중 프로필 계정 - 미지정 시 첫 번째(기본) 프로필 자동 선택"
   }
 ]

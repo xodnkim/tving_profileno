@@ -4,19 +4,14 @@ quick.py - 가장 빠르게 profileNo를 추출하고 기대값과 비교 검증
 [단일 계정 모드]
   python quick.py                          # 대화형 입력
   python quick.py -u xodn9900 -p "pw"     # CLI 인자
+  python quick.py -u xodn9900 -p "pw" --profile "딴딴"  # 특정 프로필 지정 선택
   python quick.py -u xodn9900 -p "pw" --json  # JSON 출력
 
 [배치 검증 모드] --file 옵션
   python quick.py --file accounts.json
   -> JSON 파일에 기재된 계정 목록을 순회하며 실제 profileNo를 추출하고
      DB에서 확보한 expected_profile_no와 비교하여 PASS/FAIL 리포트를 출력합니다.
-
-  사용 사례:
-    - 정기 헬스체크: 사내 테스트 계정들의 profileNo 매핑이 정상인지 매일 새벽 전수 검증
-    - 배포 후 스모크 테스트: 신규 배포 후 핵심 계정들의 인증 흐름이 정상인지 빠르게 검증
-
-  ※ expected_profile_no는 반드시 DB에서 직접 확인한 값을 수동 기입합니다.
-     (시스템이 자동 생성한 값으로 검증하면 버그도 함께 통과하는 잘못된 테스트가 됩니다.)
+     다중 프로필 계정의 경우 target_profile에 지정된 프로필(또는 첫 번째 프로필)을 자동 선택합니다.
 """
 
 import sys
@@ -25,6 +20,7 @@ import time
 import json
 import getpass
 import argparse
+from typing import Optional
 
 # Windows 콘솔 한글/이모지 인코딩 보정
 if sys.stdout.encoding != "utf-8":
@@ -49,10 +45,10 @@ def get_credentials(args):
     return username, password
 
 
-def extract_profile_no(username: str, password: str) -> dict:
+def extract_profile_no(username: str, password: str, target_profile: Optional[str] = None) -> dict:
     """
-    핵심 함수: 로그인 후 /v2/user/info API를 가로채 profileNo를 반환.
-    마이페이지 이동 없이 로그인 직후 즉시 종료.
+    핵심 함수: 로그인 후 /v2/user/info API를 가로채 profileNo 및 전체 프로필 정보를 반환.
+    다중 프로필 선택 화면이 나타나면 target_profile(또는 첫 번째 프로필)을 자동 선택합니다.
     """
     captured = []
 
@@ -82,7 +78,6 @@ def extract_profile_no(username: str, password: str) -> dict:
         page.on("response", on_response)
 
         # 메인 페이지 -> 로그인 버튼 -> 티빙 아이디로 로그인
-        # (URL 직접 이동 금지: deviceId/보안 토큰 미발급으로 서버 오류 발생)
         page.goto("https://www.tving.com/", wait_until="domcontentloaded")
         page.locator("[data-testid='nav-login-button']").first.click()
         page.wait_for_timeout(1500)
@@ -95,6 +90,7 @@ def extract_profile_no(username: str, password: str) -> dict:
 
         for _ in range(100):   # 최대 20초 대기
             page.wait_for_timeout(200)
+            # 1. 팝업 자동 확인
             try:
                 popup = page.locator("button:has-text('확인')").first
                 if popup.is_visible():
@@ -103,9 +99,29 @@ def extract_profile_no(username: str, password: str) -> dict:
                     page.locator("button[type='submit']").first.click()
             except Exception:
                 pass
+
+            # 2. 다중 프로필 선택 화면 감지 및 자동 선택
+            try:
+                if "/account/profiles" in page.url or page.locator("text='프로필을 선택하세요'").first.is_visible():
+                    btn = None
+                    if target_profile:
+                        btn = page.locator(
+                            f"button:has-text('{target_profile}'), button:has(img[alt='{target_profile}'])"
+                        ).first
+                        if not btn.is_visible():
+                            btn = None
+                    if not btn:
+                        btn = page.locator("button:has(img)").first
+
+                    if btn and btn.is_visible():
+                        btn.click()
+                        page.wait_for_timeout(1500)
+            except Exception:
+                pass
+
             if captured:
                 break
-            if "/account/login" not in page.url and "tving.com" in page.url:
+            if "/account/login" not in page.url and "tving.com" in page.url and "/account/profiles" not in page.url:
                 for _ in range(15):
                     page.wait_for_timeout(200)
                     if captured:
@@ -119,6 +135,8 @@ def extract_profile_no(username: str, password: str) -> dict:
 
     body = captured[-1].get("body", {})
     profile = body.get("profile", {})
+    profile_list = body.get("profileList", [])
+
     return {
         "profile_no":    profile.get("profileNo"),
         "profile_name":  profile.get("profileNm"),
@@ -126,6 +144,10 @@ def extract_profile_no(username: str, password: str) -> dict:
         "user_id":       body.get("userId"),
         "user_name":     body.get("userName"),
         "user_no":       body.get("userNo"),
+        "all_profiles":  [
+            {"profile_no": str(p.get("profileNo", "")), "profile_name": p.get("profileNm")}
+            for p in profile_list
+        ]
     }
 
 
@@ -137,7 +159,8 @@ def run_batch(file_path: str):
       {
         "id": "test_account_01",
         "password": "pw1234",
-        "expected_profile_no": "511756099",
+        "target_profile": "딴딴",              # 선택사항 (미지정 시 첫 번째 프로필 자동 선택)
+        "expected_profile_no": "511756099",    # 필수 (기대 profileNo)
         "desc": "계정 설명"
       }
     ]
@@ -159,22 +182,26 @@ def run_batch(file_path: str):
     results = []
 
     print()
-    print("=" * 65)
+    print("=" * 70)
     print(f"  TVING profileNo 배치 검증 시작 (총 {total}개 계정)")
-    print("=" * 65)
+    print("=" * 70)
 
     for i, account in enumerate(accounts, 1):
-        user_id  = account.get("id", "")
-        password = account.get("password", "")
-        expected = account.get("expected_profile_no", "")
-        desc     = account.get("desc", "")
+        user_id        = account.get("id", "")
+        password       = account.get("password", "")
+        target_profile = account.get("target_profile")
+        expected       = account.get("expected_profile_no", "")
+        desc           = account.get("desc", "")
 
-        print(f"\n[{i}/{total}] {user_id} ({desc})")
+        target_info = f", 대상 프로필: '{target_profile}'" if target_profile else ""
+        print(f"\n[{i}/{total}] {user_id} ({desc}{target_info})")
         start = time.time()
         try:
-            result  = extract_profile_no(user_id, password)
-            actual  = result.get("profile_no", "")
-            elapsed = round(time.time() - start, 2)
+            result       = extract_profile_no(user_id, password, target_profile=target_profile)
+            actual       = result.get("profile_no", "")
+            actual_name  = result.get("profile_name", "")
+            all_profiles = result.get("all_profiles", [])
+            elapsed      = round(time.time() - start, 2)
 
             if actual == expected:
                 status = "PASS"
@@ -183,39 +210,48 @@ def run_batch(file_path: str):
                 status = "FAIL"
                 failed += 1
 
-            print(f"  상태   : {status}")
-            print(f"  기대값 : {expected}")
-            print(f"  실제값 : {actual}")
+            print(f"  상태        : {status}")
+            print(f"  기대값      : {expected}")
+            print(f"  실제값      : {actual} ({actual_name})")
+            if len(all_profiles) > 1:
+                profs_str = ", ".join([f"{p['profile_name']}({p['profile_no']})" for p in all_profiles])
+                print(f"  보유 프로필 : {len(all_profiles)}개 [{profs_str}]")
             if status == "FAIL":
-                print(f"  차이   : expected={expected}  /  actual={actual}  <-- 불일치 감지!")
-            print(f"  소요   : {elapsed}s")
+                print(f"  불일치 감지 : expected={expected}  /  actual={actual}")
+            print(f"  소요 시간   : {elapsed}s")
 
-            results.append({"id": user_id, "desc": desc, "status": status,
-                             "expected": expected, "actual": actual, "elapsed": elapsed})
+            results.append({
+                "id": user_id, "desc": desc, "status": status,
+                "expected": expected, "actual": actual,
+                "profile_name": actual_name, "all_profiles": all_profiles,
+                "elapsed": elapsed
+            })
         except Exception as e:
             elapsed = round(time.time() - start, 2)
             errors += 1
-            print(f"  상태   : ERROR")
-            print(f"  원인   : {e}")
-            results.append({"id": user_id, "desc": desc, "status": "ERROR",
-                             "error": str(e), "elapsed": elapsed})
+            print(f"  상태        : ERROR")
+            print(f"  원인        : {e}")
+            results.append({
+                "id": user_id, "desc": desc, "status": "ERROR",
+                "error": str(e), "elapsed": elapsed
+            })
 
     print()
-    print("=" * 65)
+    print("=" * 70)
     print(f"  결과: {total}건 중  PASS {passed}  /  FAIL {failed}  /  ERROR {errors}")
-    print("=" * 65)
+    print("=" * 70)
     for r in results:
         mark = "O" if r["status"] == "PASS" else "X"
-        line = f"  [{mark}] {r['id']:<22} | {r['status']}"
+        pname = f" ({r.get('profile_name', '')})" if r.get("profile_name") else ""
+        line = f"  [{mark}] {r['id']:<20}{pname:<12} | {r['status']}"
         if r["status"] == "FAIL":
             line += f"  (기대: {r['expected']} / 실제: {r['actual']})"
         elif r["status"] == "ERROR":
-            line += f"  ({r.get('error','')[:45]})"
+            line += f"  ({r.get('error','')[:40]})"
         print(line)
-    print("=" * 65)
+    print("=" * 70)
     print()
 
-    # FAIL/ERROR 존재 시 exit code 1 반환 (CI/CD 파이프라인 자동 감지용)
     if failed > 0 or errors > 0:
         sys.exit(1)
 
@@ -227,11 +263,13 @@ def main():
         epilog="""
 사용 예시:
   단일 계정:  python quick.py -u xodn9900 -p "pw"
+  특정 프로필: python quick.py -u xodn9900 -p "pw" --profile "딴딴"
   배치 검증:  python quick.py --file accounts.json
         """
     )
     parser.add_argument("-u", "--username", type=str, default=None, help="TVING 아이디 (단일 모드)")
     parser.add_argument("-p", "--password", type=str, default=None, help="TVING 비밀번호 (단일 모드)")
+    parser.add_argument("--profile", type=str, default=None, help="다중 프로필 계정 시 선택할 프로필 이름 (미지정 시 첫 번째 프로필 자동 선택)")
     parser.add_argument("--json", action="store_true", help="결과를 JSON 출력 (단일 모드)")
     parser.add_argument("--file", type=str, default=None, metavar="accounts.json",
                         help="배치 검증 모드: 계정 목록 JSON 파일 경로")
@@ -243,7 +281,7 @@ def main():
 
     username, password = get_credentials(args)
     start = time.time()
-    result = extract_profile_no(username, password)
+    result = extract_profile_no(username, password, target_profile=args.profile)
     elapsed = round(time.time() - start, 2)
 
     if args.json:
@@ -253,6 +291,10 @@ def main():
         print(f"  profileNo    : {result['profile_no']}")
         print(f"  profile_name : {result['profile_name']}")
         print(f"  user_id      : {result['user_id']}")
+        all_profs = result.get("all_profiles", [])
+        if len(all_profs) > 1:
+            profs_str = ", ".join([f"{p['profile_name']}({p['profile_no']})" for p in all_profs])
+            print(f"  보유 프로필  : {len(all_profs)}개 [{profs_str}]")
         print(f"  elapsed      : {elapsed}s")
 
 

@@ -13,8 +13,10 @@ class Config:
         password: Optional[str] = None,
         headless: bool = True,
         timeout_ms: int = 30000,
-        output_path: Optional[str] = None
+        output_path: Optional[str] = None,
+        target_profile: Optional[str] = None
     ):
+        self.target_profile = target_profile.strip() if target_profile else None
         # 1. Username: CLI 인자 우선, 없으면 대화형 터미널 입력
         if username:
             self.username = username.strip()

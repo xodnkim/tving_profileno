@@ -37,9 +37,10 @@ class LoginPage(BasePage):
         except Exception:
             pass
 
-    def perform_login(self, username: str, password: str) -> bool:
+    def perform_login(self, username: str, password: str, target_profile: Optional[str] = None) -> bool:
         """
         아이디와 비밀번호를 입력하고 로그인을 수행합니다.
+        다중 프로필 계정일 경우 지정된 프로필(또는 첫 번째 프로필)을 자동 선택합니다.
         """
         logger.info(f"로그인 시도 - 사용자 ID: {username}")
 
@@ -60,18 +61,22 @@ class LoginPage(BasePage):
         self.safe_click(self.SUBMIT_BTN)
 
         # 결과 대기 (성공적인 페이지 전환 또는 에러 모달 출현 감지)
-        for attempt in range(35):  # 최대 7초 대기
+        for attempt in range(45):  # 최대 9초 대기
             self.page.wait_for_timeout(200)
 
             # 1. 로그인 성공 감지 (로그인 페이지를 벗어났는지 확인)
             try:
                 current_url = self.page.url
                 if "/account/login" not in current_url:
+                    logger.info("로그인 인증 성공!")
+
+                    # 1-1. 다중 프로필 선택 화면 자동 처리
+                    self.handle_profile_selection(target_profile)
+
                     try:
-                        self.page.wait_for_load_state("networkidle", timeout=5000)
+                        self.page.wait_for_load_state("domcontentloaded", timeout=5000)
                     except Exception:
                         pass
-                    logger.info("로그인 성공!")
                     return True
             except Exception:
                 continue
@@ -98,3 +103,48 @@ class LoginPage(BasePage):
                 pass
 
         raise RuntimeError("로그인 후 응답 대기 시간 초과")
+
+    def handle_profile_selection(self, target_profile: Optional[str] = None) -> bool:
+        """
+        다중 프로필 계정의 경우 로그인 직후 나타나는 '프로필을 선택하세요' 화면을 감지하고 프로필을 선택합니다.
+        - target_profile이 지정되어 있으면 해당 프로필 클릭
+        - 미지정 시 첫 번째(기본) 프로필 자동 클릭
+        - 단일 프로필 계정이라 선택 화면이 없으면 자동으로 통과
+        """
+        self.page.wait_for_timeout(1000)
+        current_url = self.page.url
+
+        # 프로필 선택 화면 여부 확인
+        is_profiles_page = (
+            "/account/profiles" in current_url
+            or self.page.locator("text='프로필을 선택하세요'").first.is_visible()
+        )
+
+        if not is_profiles_page:
+            return False
+
+        logger.info(f"다중 프로필 선택 화면 감지. 프로필 선택 진행 (지정 프로필: {target_profile or '첫 번째(기본)'})")
+
+        btn = None
+        if target_profile:
+            btn = self.page.locator(
+                f"button:has-text('{target_profile}'), button:has(img[alt='{target_profile}'])"
+            ).first
+            if not btn.is_visible():
+                logger.warning(f"지정된 프로필 '{target_profile}'을 찾을 수 없어 첫 번째 프로필을 선택합니다.")
+                btn = None
+
+        if not btn:
+            # 첫 번째 프로필 카드 버튼
+            btn = self.page.locator("button:has(img)").first
+
+        if btn and btn.is_visible():
+            btn_text = btn.inner_text().replace("\n", " ").strip()
+            logger.info(f"프로필 카드 자동 선택 완료: '{btn_text}'")
+            btn.click()
+            self.page.wait_for_timeout(2000)
+            return True
+        else:
+            logger.warning("프로필 선택 버튼을 찾지 못했습니다.")
+            return False
+
