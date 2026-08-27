@@ -3,9 +3,9 @@ quick.py - 가장 빠르게 profileNo를 추출하고 기대값과 비교 검증
 
 [단일 계정 모드]
   python quick.py                                        # 티빙 ID 대화형 입력
-  python quick.py -u xodn9900 -p "pw"                   # 티빙 ID CLI 실행
-  python quick.py -u cbgg545 -p "pw" --login-type cjone # CJ ONE 계정 로그인
-  python quick.py -u cbgg545 -p "pw" --login-type cjone --profile "윤돔"  # 특정 프로필 선택
+  python quick.py -u test_user -p "pw"                  # 티빙 ID CLI 실행
+  python quick.py -u test_user -p "pw" --login-type cjone # CJ ONE 계정 로그인
+  python quick.py -u test_user -p "pw" --login-type cjone --profile "프로필1"  # 특정 프로필 선택
 
 [배치 검증 모드] --file 옵션
   python quick.py --file accounts.json
@@ -167,11 +167,11 @@ def run_batch(file_path: str):
     accounts.json 형식:
     [
       {
-        "id": "cbgg545",
+        "id": "test_cjone_01",
         "password": "pw",
         "login_type": "cjone",                  # 선택사항: 'tving' (기본값) 또는 'cjone'
-        "target_profile": "주여르",             # 선택사항: 대상 프로필명 (미지정 시 첫 번째 프로필 자동 선택)
-        "expected_profile_no": "505135124",     # 필수: 기대 profileNo
+        "target_profile": "프로필1",            # 선택사항: 대상 프로필명 (미지정 시 첫 번째 프로필 자동 선택)
+        "expected_profile_no": "505000001",     # 필수: 기대 profileNo
         "desc": "계정 설명"
       }
     ]
@@ -279,9 +279,9 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 사용 예시:
-  티빙 아이디:   python quick.py -u xodn9900 -p "pw"
-  CJ ONE 계정:   python quick.py -u cbgg545 -p "pw" --login-type cjone
-  특정 프로필:   python quick.py -u cbgg545 -p "pw" --login-type cjone --profile "주여르"
+  티빙 아이디:   python quick.py -u test_user -p "pw"
+  CJ ONE 계정:   python quick.py -u test_cjone_user -p "pw" --login-type cjone
+  특정 프로필:   python quick.py -u test_cjone_user -p "pw" --login-type cjone --profile "프로필1"
   배치 검증:     python quick.py --file accounts.json
         """
     )

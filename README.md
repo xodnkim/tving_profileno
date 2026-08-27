@@ -135,9 +135,9 @@ python quick.py --file accounts.json
     "id": "test_cjone_01",
     "password": "password1234",
     "login_type": "cjone",
-    "target_profile": "주여르",
-    "expected_profile_no": "505135124",
-    "desc": "CJ ONE 다중 프로필 계정 - 특정 프로필('주여르') 지정"
+    "target_profile": "키즈",
+    "expected_profile_no": "505000002",
+    "desc": "CJ ONE 다중 프로필 계정 - 특정 프로필('키즈') 지정"
   }
 ]
 ```
@@ -150,10 +150,10 @@ python quick.py --file accounts.json
 ```text
 22:05:38 [INFO] 메인 페이지의 로그인 버튼 클릭 (Selector: [data-testid='nav-login-button'])
 22:05:41 [INFO] 'CJ ONE으로 시작하기' 옵션 선택 (Selector: a[href*='/account/login/cj-one'])
-22:05:41 [INFO] 로그인 시도 - 사용자 ID: cbgg545
+22:05:41 [INFO] 로그인 시도 - 사용자 ID: test_cjone_user
 22:05:44 [INFO] 로그인 인증 성공!
-22:05:45 [INFO] 다중 프로필 선택 화면 감지. 프로필 선택 진행 (지정 프로필: 주여르)
-22:05:45 [INFO] 프로필 카드 자동 선택 완료: '주여르'
+22:05:45 [INFO] 다중 프로필 선택 화면 감지. 프로필 선택 진행 (지정 프로필: 키즈)
+22:05:45 [INFO] 프로필 카드 자동 선택 완료: '키즈'
 22:05:46 [INFO] Network Intercept: TVING 유저 정보 API(/v2/user/info) 응답 포착 완료
 22:05:47 [INFO] 마이페이지 진입 플로우 시작 (UI 프로필 메뉴 경유)...
 22:05:47 [INFO] 프로필 아이콘 클릭/호버: [data-testid='nav-profile-menu-trigger']
@@ -164,16 +164,16 @@ python quick.py --file accounts.json
 ============================================================
           TVING profileNo 추출 결과
 ============================================================
- [★] profileNo       : 505135124
- [-] 프로필 명       : 주여르
- [-] 사용자 ID       : cbgg545
- [-] 사용자 명       : 최주열
- [-] 회원 번호(userNo): 505135124
+ [★] profileNo       : 505000002
+ [-] 프로필 명       : 키즈
+ [-] 사용자 ID       : test_cjone_user
+ [-] 사용자 명       : 홍길동
+ [-] 회원 번호(userNo): 505000002
  [-] 데이터 출처     : 백엔드 API (/v2/user/info)
  [-] 총 소요 시간    : 12.05초
  [-] 보유 프로필 목록 (2개):
-       1. 주여르 (profileNo: 505135124)
-       2. 윤돔 (profileNo: 509589495)
+       1. 기본프로필 (profileNo: 505000001)
+       2. 키즈 (profileNo: 505000002)
 ============================================================
 ```
 
@@ -189,18 +189,18 @@ python quick.py --file accounts.json
   실제값      : 511000001 (기본프로필)
   소요 시간   : 10.5s
 
-[2/3] [CJONE] test_cjone_01 (CJ ONE 다중 프로필 계정, 대상 프로필: '주여르')
+[2/3] [CJONE] test_cjone_01 (CJ ONE 다중 프로필 계정, 대상 프로필: '키즈')
   상태        : PASS
-  기대값      : 505135124
-  실제값      : 505135124 (주여르)
-  보유 프로필 : 2개 [주여르(505135124), 윤돔(509589495)]
+  기대값      : 505000002
+  실제값      : 505000002 (키즈)
+  보유 프로필 : 2개 [기본프로필(505000001), 키즈(505000002)]
   소요 시간   : 10.4s
 
 [3/3] [CJONE] test_cjone_02 (CJ ONE 다중 프로필 계정)
   상태        : FAIL
-  기대값      : 505100000
-  실제값      : 509589495 (윤돔)
-  불일치 감지 : expected=505100000  /  actual=509589495
+  기대값      : 505000003
+  실제값      : 505000002 (키즈)
+  불일치 감지 : expected=505000003  /  actual=505000002
   소요 시간   : 10.4s
 
 ======================================================================
