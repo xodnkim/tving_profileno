@@ -1,23 +1,26 @@
 [
   {
-    "id": "test_basic_01",
+    "id": "test_tving_01",
     "password": "password1234",
+    "login_type": "tving",
     "target_profile": null,
     "expected_profile_no": "511000001",
-    "desc": "단일 프로필 계정 (기본)"
+    "desc": "티빙 아이디 단일 프로필 계정"
   },
   {
-    "id": "test_family_01",
+    "id": "test_cjone_01",
     "password": "password1234",
-    "target_profile": "키즈",
-    "expected_profile_no": "511000002",
-    "desc": "다중 프로필 계정 - 특정 프로필('키즈') 지정 선택"
+    "login_type": "cjone",
+    "target_profile": "프로필1",
+    "expected_profile_no": "505000001",
+    "desc": "CJ ONE 다중 프로필 계정 - 특정 프로필('프로필1') 지정"
   },
   {
-    "id": "test_family_02",
+    "id": "test_cjone_02",
     "password": "password1234",
+    "login_type": "cjone",
     "target_profile": null,
-    "expected_profile_no": "511000003",
-    "desc": "다중 프로필 계정 - 미지정 시 첫 번째(기본) 프로필 자동 선택"
+    "expected_profile_no": "505000002",
+    "desc": "CJ ONE 다중 프로필 계정 - 미지정 시 첫 번째(기본) 프로필 자동 선택"
   }
 ]

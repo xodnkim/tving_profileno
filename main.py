@@ -44,6 +44,8 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--no-headless", dest="headless", action="store_false", help="브라우저 화면을 보면서 실행")
     parser.add_argument("-o", "--output", type=str, help="결과를 저장할 JSON 파일 경로")
     parser.add_argument("--profile", type=str, default=None, help="다중 프로필 계정 시 선택할 프로필 이름 (미지정 시 첫 번째 프로필 자동 선택)")
+    parser.add_argument("--login-type", choices=["tving", "cjone"], default="tving",
+                        help="로그인 유형 선택: tving (티빙 아이디, 기본값) 또는 cjone (CJ ONE 아이디)")
     return parser.parse_args()
 
 
@@ -73,7 +75,7 @@ def run_automation(config: Config) -> ExtractionResult:
             my_page = MyPage(page, timeout_ms=config.timeout_ms)
 
             # 2. 메인 페이지 -> 로그인 플로우 수행 (deviceId 세션 보장)
-            login_page.open_via_flow()
+            login_page.open_via_flow(login_type=config.login_type)
 
             # 3. 로그인 수행 (다중 프로필 계정 시 자동 선택 지원)
             login_page.perform_login(
@@ -146,7 +148,8 @@ def main():
         password=args.password,
         headless=args.headless,
         output_path=args.output,
-        target_profile=args.profile
+        target_profile=args.profile,
+        login_type=args.login_type
     )
 
     # 실행

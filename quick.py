@@ -2,16 +2,15 @@
 quick.py - 가장 빠르게 profileNo를 추출하고 기대값과 비교 검증하는 스크립트
 
 [단일 계정 모드]
-  python quick.py                          # 대화형 입력
-  python quick.py -u xodn9900 -p "pw"     # CLI 인자
-  python quick.py -u xodn9900 -p "pw" --profile "딴딴"  # 특정 프로필 지정 선택
-  python quick.py -u xodn9900 -p "pw" --json  # JSON 출력
+  python quick.py                                        # 티빙 ID 대화형 입력
+  python quick.py -u xodn9900 -p "pw"                   # 티빙 ID CLI 실행
+  python quick.py -u cbgg545 -p "pw" --login-type cjone # CJ ONE 계정 로그인
+  python quick.py -u cbgg545 -p "pw" --login-type cjone --profile "윤돔"  # 특정 프로필 선택
 
 [배치 검증 모드] --file 옵션
   python quick.py --file accounts.json
-  -> JSON 파일에 기재된 계정 목록을 순회하며 실제 profileNo를 추출하고
-     DB에서 확보한 expected_profile_no와 비교하여 PASS/FAIL 리포트를 출력합니다.
-     다중 프로필 계정의 경우 target_profile에 지정된 프로필(또는 첫 번째 프로필)을 자동 선택합니다.
+  -> JSON 파일의 login_type ("tving" 또는 "cjone")을 자동 인식하여
+     순차 검증 후 PASS/FAIL 리포트를 출력합니다.
 """
 
 import sys
@@ -38,17 +37,24 @@ def get_credentials(args):
     username = args.username
     password = args.password
     if not username:
-        print("[1/2] TVING 아이디: ", end="", flush=True)
+        prefix = "CJ ONE" if getattr(args, "login_type", "tving") == "cjone" else "TVING"
+        print(f"[1/2] {prefix} 아이디: ", end="", flush=True)
         username = input().strip()
     if not password:
         password = getpass.getpass("[2/2] 비밀번호 (입력 안 보임): ").strip()
     return username, password
 
 
-def extract_profile_no(username: str, password: str, target_profile: Optional[str] = None) -> dict:
+def extract_profile_no(
+    username: str,
+    password: str,
+    target_profile: Optional[str] = None,
+    login_type: str = "tving"
+) -> dict:
     """
     핵심 함수: 로그인 후 /v2/user/info API를 가로채 profileNo 및 전체 프로필 정보를 반환.
-    다중 프로필 선택 화면이 나타나면 target_profile(또는 첫 번째 프로필)을 자동 선택합니다.
+    - login_type: 'tving' (티빙 ID) 또는 'cjone' (CJ ONE ID)
+    - 다중 프로필 선택 화면이 나타나면 target_profile(또는 첫 번째 프로필)을 자동 선택합니다.
     """
     captured = []
 
@@ -77,16 +83,20 @@ def extract_profile_no(username: str, password: str, target_profile: Optional[st
 
         page.on("response", on_response)
 
-        # 메인 페이지 -> 로그인 버튼 -> 티빙 아이디로 로그인
+        # 메인 페이지 -> 로그인 버튼 -> 로그인 방식 선택
         page.goto("https://www.tving.com/", wait_until="domcontentloaded")
         page.locator("[data-testid='nav-login-button']").first.click()
         page.wait_for_timeout(1500)
-        page.locator("a[href*='/account/login/tving']").first.click()
+
+        if login_type.lower() == "cjone":
+            page.locator("a[href*='/account/login/cj-one']").first.click()
+        else:
+            page.locator("a[href*='/account/login/tving']").first.click()
         page.wait_for_timeout(1500)
 
         page.locator("input[name='id']").first.fill(username)
         page.locator("input[name='password']").first.fill(password)
-        page.locator("button[type='submit']").first.click()
+        page.locator("button[type='submit'], button:has-text('로그인')").first.click()
 
         for _ in range(100):   # 최대 20초 대기
             page.wait_for_timeout(200)
@@ -131,7 +141,7 @@ def extract_profile_no(username: str, password: str, target_profile: Optional[st
         browser.close()
 
     if not captured:
-        raise RuntimeError("profileNo를 찾지 못했습니다. 아이디/비밀번호를 확인하세요.")
+        raise RuntimeError("profileNo를 찾지 못했습니다. 아이디, 비밀번호 또는 로그인 유형(티빙/CJ ONE)을 확인하세요.")
 
     body = captured[-1].get("body", {})
     profile = body.get("profile", {})
@@ -157,14 +167,14 @@ def run_batch(file_path: str):
     accounts.json 형식:
     [
       {
-        "id": "test_account_01",
-        "password": "pw1234",
-        "target_profile": "딴딴",              # 선택사항 (미지정 시 첫 번째 프로필 자동 선택)
-        "expected_profile_no": "511756099",    # 필수 (기대 profileNo)
+        "id": "cbgg545",
+        "password": "pw",
+        "login_type": "cjone",                  # 선택사항: 'tving' (기본값) 또는 'cjone'
+        "target_profile": "주여르",             # 선택사항: 대상 프로필명 (미지정 시 첫 번째 프로필 자동 선택)
+        "expected_profile_no": "505135124",     # 필수: 기대 profileNo
         "desc": "계정 설명"
       }
     ]
-    expected_profile_no는 DB에서 직접 확인한 값을 수동 기입합니다.
     """
     try:
         with open(file_path, encoding="utf-8-sig") as f:
@@ -189,15 +199,21 @@ def run_batch(file_path: str):
     for i, account in enumerate(accounts, 1):
         user_id        = account.get("id", "")
         password       = account.get("password", "")
+        login_type     = account.get("login_type", "tving")
         target_profile = account.get("target_profile")
         expected       = account.get("expected_profile_no", "")
         desc           = account.get("desc", "")
 
+        type_info = f" [{login_type.upper()}]"
         target_info = f", 대상 프로필: '{target_profile}'" if target_profile else ""
-        print(f"\n[{i}/{total}] {user_id} ({desc}{target_info})")
+        print(f"\n[{i}/{total}]{type_info} {user_id} ({desc}{target_info})")
         start = time.time()
         try:
-            result       = extract_profile_no(user_id, password, target_profile=target_profile)
+            result       = extract_profile_no(
+                user_id, password,
+                target_profile=target_profile,
+                login_type=login_type
+            )
             actual       = result.get("profile_no", "")
             actual_name  = result.get("profile_name", "")
             all_profiles = result.get("all_profiles", [])
@@ -222,6 +238,7 @@ def run_batch(file_path: str):
 
             results.append({
                 "id": user_id, "desc": desc, "status": status,
+                "login_type": login_type,
                 "expected": expected, "actual": actual,
                 "profile_name": actual_name, "all_profiles": all_profiles,
                 "elapsed": elapsed
@@ -262,13 +279,16 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 사용 예시:
-  단일 계정:  python quick.py -u xodn9900 -p "pw"
-  특정 프로필: python quick.py -u xodn9900 -p "pw" --profile "딴딴"
-  배치 검증:  python quick.py --file accounts.json
+  티빙 아이디:   python quick.py -u xodn9900 -p "pw"
+  CJ ONE 계정:   python quick.py -u cbgg545 -p "pw" --login-type cjone
+  특정 프로필:   python quick.py -u cbgg545 -p "pw" --login-type cjone --profile "주여르"
+  배치 검증:     python quick.py --file accounts.json
         """
     )
-    parser.add_argument("-u", "--username", type=str, default=None, help="TVING 아이디 (단일 모드)")
-    parser.add_argument("-p", "--password", type=str, default=None, help="TVING 비밀번호 (단일 모드)")
+    parser.add_argument("-u", "--username", type=str, default=None, help="아이디 (단일 모드)")
+    parser.add_argument("-p", "--password", type=str, default=None, help="비밀번호 (단일 모드)")
+    parser.add_argument("--login-type", choices=["tving", "cjone"], default="tving",
+                        help="로그인 유형 선택: tving (티빙 아이디, 기본값) 또는 cjone (CJ ONE 아이디)")
     parser.add_argument("--profile", type=str, default=None, help="다중 프로필 계정 시 선택할 프로필 이름 (미지정 시 첫 번째 프로필 자동 선택)")
     parser.add_argument("--json", action="store_true", help="결과를 JSON 출력 (단일 모드)")
     parser.add_argument("--file", type=str, default=None, metavar="accounts.json",
@@ -281,7 +301,11 @@ def main():
 
     username, password = get_credentials(args)
     start = time.time()
-    result = extract_profile_no(username, password, target_profile=args.profile)
+    result = extract_profile_no(
+        username, password,
+        target_profile=args.profile,
+        login_type=args.login_type
+    )
     elapsed = round(time.time() - start, 2)
 
     if args.json:
@@ -291,6 +315,7 @@ def main():
         print(f"  profileNo    : {result['profile_no']}")
         print(f"  profile_name : {result['profile_name']}")
         print(f"  user_id      : {result['user_id']}")
+        print(f"  user_name    : {result['user_name']}")
         all_profs = result.get("all_profiles", [])
         if len(all_profs) > 1:
             profs_str = ", ".join([f"{p['profile_name']}({p['profile_no']})" for p in all_profs])

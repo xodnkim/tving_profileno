@@ -17,19 +17,23 @@ TVING 웹페이지에 로그인한 뒤, 백엔드 API 응답에서 `profileNo`�
   - **단일 프로필 계정**: 선택 화면이 나타나지 않으므로 딜레이 없이 즉시 다음 단계로 진행합니다.
   - **전체 프로필 정보 수집**: 활성 프로필뿐만 아니라 해당 계정에 등록된 **전체 프로필 목록(`all_profiles`)**까지 함께 수집하여 리포트에 출력합니다.
 
-### 3) 안정적인 셀렉터 (`data-testid`) 활용
+### 3) 로그인 수단 다변화 지원 (티빙 ID & CJ ONE 계정)
+- 티빙 전용 계정(`tving`)뿐만 아니라, 많은 사용자가 이용하는 **CJ ONE 통합 아이디(`cjone`)** 로그인 방식을 모두 지원합니다.
+- CLI 인자(`--login-type cjone`) 또는 배치 파일(`"login_type": "cjone"`)을 통해 유연하게 로그인 수단을 전환할 수 있습니다.
+
+### 4) 안정적인 셀렉터 (`data-testid`) 활용
 - 화면 변경이나 다국어 처리 시 깨지기 쉬운 텍스트나 클래스명 대신, 개발/QA용으로 심어져 있는 고유 속성(`data-testid`)을 우선 사용했습니다.
   - 메인 로그인 버튼: `[data-testid='nav-login-button']`
   - 프로필 메뉴 트리거: `[data-testid='nav-profile-menu-trigger']`
   - 마이페이지 링크: `[data-testid='nav-profile-menu-my']`
 
-### 4) 실제 사용자 탐색 플로우 반영
+### 5) 실제 사용자 탐색 플로우 반영
 - 로그인 후 URL(`tving.com/my`)로 바로 건너뛰지 않고, 우측 상단 프로필 아이콘을 눌러 나타나는 'MY' 메뉴를 직접 클릭해 이동하도록 구성했습니다. (UI 탐색 실패 시 URL 직접 이동으로 자동 대체)
 
-### 5) API 응답(Network Interception)에서 데이터 추출
+### 6) API 응답(Network Interception)에서 데이터 추출
 - 마이페이지 화면의 DOM 텍스트를 파싱하는 방식 대신, 브라우저가 주고받는 네트워크 패킷 중 유저 정보 API(`api.tving.com/v2/user/info`) 응답을 직접 가로채서 `profileNo`를 안전하게 가져옵니다.
 
-### 6) 간헐적 오류 팝업 자동 처리
+### 7) 간헐적 오류 팝업 자동 처리
 - 로그인 시 종종 발생하는 "일시적인 서비스 오류" 팝업 감지 시, 자동으로 확인 버튼을 누르고 잠시 대기 후 재시도하도록 예외 처리를 추가했습니다.
 
 ---
@@ -72,34 +76,41 @@ playwright install chromium
 | :--- | :--- | :--- |
 | **용도** | 전체 E2E UI 탐색 및 검증 | 단일/다중 계정 빠른 profileNo 추출 |
 | **마이페이지 진입** | UI 메뉴를 거쳐 직접 이동 | 로그인 직후 API만 포착하여 즉시 종료 |
+| **로그인 유형** | 티빙 ID / CJ ONE 계정 (`--login-type`) | 티빙 ID / CJ ONE 계정 (`--login-type`) |
 | **다중 프로필 처리** | 첫 번째 프로필 자동 선택 (또는 `--profile` 지정) | 첫 번째 프로필 자동 선택 (또는 `--profile` 지정) |
 | **소요 시간** | 약 10~20초 | 약 10초 |
 
 #### [기본] `main.py` 실행
 ```bash
-# 터미널에서 순차적으로 ID, PW 입력 (비밀번호 마스킹)
+# 1. 기본 실행 (티빙 아이디 대화형 입력)
 python main.py
 
-# CLI 인자로 직접 전달
+# 2. 티빙 아이디 CLI 실행
 python main.py -u "아이디" -p "비밀번호"
 
-# 다중 프로필 계정에서 특정 프로필 지정 선택
+# 3. CJ ONE 계정 로그인 실행
+python main.py -u "아이디" -p "비밀번호" --login-type cjone
+
+# 4. 다중 프로필 계정에서 특정 프로필 지정 선택
 python main.py -u "아이디" -p "비밀번호" --profile "딴딴"
 
-# 브라우저 화면을 보면서 실행
+# 5. 브라우저 화면을 보면서 실행
 python main.py -u "아이디" -p "비밀번호" --no-headless
 
-# 결과를 JSON 파일로 저장
+# 6. 결과를 JSON 파일로 저장
 python main.py -u "아이디" -p "비밀번호" -o result.json
 ```
 
 #### [선택] `quick.py` 실행 (빠른 추출 및 배치 검증)
 ```bash
-# 단일 계정 빠른 추출 (미지정 시 첫 번째 프로필 자동 선택)
+# 단일 계정 빠른 추출 (티빙 ID)
 python quick.py -u "아이디" -p "비밀번호"
 
+# CJ ONE 계정 빠른 추출
+python quick.py -u "아이디" -p "비밀번호" --login-type cjone
+
 # 특정 프로필 지정 추출
-python quick.py -u "아이디" -p "비밀번호" --profile "키즈"
+python quick.py -u "아이디" -p "비밀번호" --login-type cjone --profile "키즈"
 
 # 여러 계정 일괄 비교 검증 (배치 모드)
 python quick.py --file accounts.json
@@ -107,24 +118,26 @@ python quick.py --file accounts.json
 
 > **배치 검증 모드 (`--file`)**  
 > 사내 테스트 계정 목록(`accounts.json`)을 읽어 순차적으로 로그인하고, 실제 발급된 `profileNo`가 DB 기준 기대값(`expected_profile_no`)과 일치하는지 비교하여 PASS/FAIL 결과를 출력합니다.  
-> 다중 프로필 계정은 `target_profile`에 프로필명을 적어두면 해당 프로필을 클릭하여 검증합니다. (미지정 시 첫 번째 프로필 자동 선택)
+> 각 계정별로 `login_type`("tving" 또는 "cjone") 및 `target_profile`을 지정하여 유연하게 검증할 수 있습니다.
 
 `accounts.json` 형식 예시:
 ```json
 [
   {
-    "id": "test_basic_01",
+    "id": "test_tving_01",
     "password": "password1234",
+    "login_type": "tving",
     "target_profile": null,
     "expected_profile_no": "511000001",
-    "desc": "단일 프로필 계정"
+    "desc": "티빙 아이디 단일 프로필 계정"
   },
   {
-    "id": "test_family_01",
+    "id": "test_cjone_01",
     "password": "password1234",
-    "target_profile": "키즈",
-    "expected_profile_no": "511000002",
-    "desc": "다중 프로필 계정 - 특정 프로필('키즈') 지정 선택"
+    "login_type": "cjone",
+    "target_profile": "주여르",
+    "expected_profile_no": "505135124",
+    "desc": "CJ ONE 다중 프로필 계정 - 특정 프로필('주여르') 지정"
   }
 ]
 ```
@@ -133,28 +146,34 @@ python quick.py --file accounts.json
 
 ## 4. 실행 결과 예시
 
-### `main.py` 실행 결과
+### `main.py` 실행 결과 (CJ ONE 다중 프로필 계정 예시)
 ```text
-22:00:16 [INFO] 메인 페이지의 로그인 버튼 클릭 (Selector: [data-testid='nav-login-button'])
-22:00:19 [INFO] '티빙 아이디로 로그인' 옵션 선택
-22:00:19 [INFO] 로그인 시도 - 사용자 ID: xodn9900
-22:00:23 [INFO] 로그인 인증 성공!
-22:00:24 [INFO] 마이페이지 진입 플로우 시작 (UI 프로필 메뉴 경유)...
-22:00:24 [INFO] 프로필 아이콘 클릭/호버: [data-testid='nav-profile-menu-trigger']
-22:00:25 [INFO] 드롭다운 메뉴의 'MY' 클릭: [data-testid='nav-profile-menu-my']
-22:00:25 [INFO] 마이페이지 UI 진입 성공: https://www.tving.com/my
-22:00:25 [INFO] 백엔드 API(/v2/user/info) 응답 포착 완료
+22:05:38 [INFO] 메인 페이지의 로그인 버튼 클릭 (Selector: [data-testid='nav-login-button'])
+22:05:41 [INFO] 'CJ ONE으로 시작하기' 옵션 선택 (Selector: a[href*='/account/login/cj-one'])
+22:05:41 [INFO] 로그인 시도 - 사용자 ID: cbgg545
+22:05:44 [INFO] 로그인 인증 성공!
+22:05:45 [INFO] 다중 프로필 선택 화면 감지. 프로필 선택 진행 (지정 프로필: 주여르)
+22:05:45 [INFO] 프로필 카드 자동 선택 완료: '주여르'
+22:05:46 [INFO] Network Intercept: TVING 유저 정보 API(/v2/user/info) 응답 포착 완료
+22:05:47 [INFO] 마이페이지 진입 플로우 시작 (UI 프로필 메뉴 경유)...
+22:05:47 [INFO] 프로필 아이콘 클릭/호버: [data-testid='nav-profile-menu-trigger']
+22:05:48 [INFO] 드롭다운 메뉴의 'MY' 클릭: [data-testid='nav-profile-menu-my']
+22:05:49 [INFO] 마이페이지 UI 진입 성공: https://www.tving.com/my
+22:05:49 [INFO] 백엔드 API(/v2/user/info) 응답 포착 완료
 
 ============================================================
           TVING profileNo 추출 결과
 ============================================================
- [★] profileNo       : 511756099
- [-] 프로필 명       : 딴딴
- [-] 사용자 ID       : xodn9900
- [-] 사용자 명       : 김태우
- [-] 회원 번호(userNo): 511756099
+ [★] profileNo       : 505135124
+ [-] 프로필 명       : 주여르
+ [-] 사용자 ID       : cbgg545
+ [-] 사용자 명       : 최주열
+ [-] 회원 번호(userNo): 505135124
  [-] 데이터 출처     : 백엔드 API (/v2/user/info)
- [-] 총 소요 시간    : 10.12초
+ [-] 총 소요 시간    : 12.05초
+ [-] 보유 프로필 목록 (2개):
+       1. 주여르 (profileNo: 505135124)
+       2. 윤돔 (profileNo: 509589495)
 ============================================================
 ```
 
@@ -164,25 +183,25 @@ python quick.py --file accounts.json
   TVING profileNo 배치 검증 시작 (총 3개 계정)
 ======================================================================
 
-[1/3] test_basic_01 (단일 프로필 계정)
+[1/3] [TVING] test_tving_01 (티빙 아이디 단일 프로필 계정)
   상태        : PASS
   기대값      : 511000001
   실제값      : 511000001 (기본프로필)
   소요 시간   : 10.5s
 
-[2/3] test_family_01 (다중 프로필 계정, 대상 프로필: '키즈')
+[2/3] [CJONE] test_cjone_01 (CJ ONE 다중 프로필 계정, 대상 프로필: '주여르')
   상태        : PASS
-  기대값      : 511000002
-  실제값      : 511000002 (키즈)
-  보유 프로필 : 2개 [딴딴(511000001), 키즈(511000002)]
-  소요 시간   : 11.2s
+  기대값      : 505135124
+  실제값      : 505135124 (주여르)
+  보유 프로필 : 2개 [주여르(505135124), 윤돔(509589495)]
+  소요 시간   : 10.4s
 
-[3/3] test_premium_01 (프리미엄 이용권 계정)
+[3/3] [CJONE] test_cjone_02 (CJ ONE 다중 프로필 계정)
   상태        : FAIL
-  기대값      : 511000003
-  실제값      : 511099999 (프로필1)
-  불일치 감지 : expected=511000003  /  actual=511099999
-  소요 시간   : 10.8s
+  기대값      : 505100000
+  실제값      : 509589495 (윤돔)
+  불일치 감지 : expected=505100000  /  actual=509589495
+  소요 시간   : 10.4s
 
 ======================================================================
   결과: 3건 중  PASS 2  /  FAIL 1  /  ERROR 0

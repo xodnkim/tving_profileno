@@ -14,6 +14,7 @@ class LoginPage(BasePage):
     # Selectors (QA/E2E 테스트 표준: data-testid 우선 적용)
     NAV_LOGIN_BTN = "[data-testid='nav-login-button']"
     TVING_ID_LINK = "a[href*='/account/login/tving']"
+    CJONE_ID_LINK = "a[href*='/account/login/cj-one']"
     ID_INPUT = "input[name='id']"
     PW_INPUT = "input[name='password']"
     SUBMIT_BTN = "button[type='submit']"
@@ -21,8 +22,10 @@ class LoginPage(BasePage):
     # Error modal selectors
     MODAL_TEXT = "div:has-text('입력하신 회원정보를 찾을 수 없습니다'), div:has-text('일시적인 서비스 오류'), div:has-text('오류')"
 
-    def open_via_flow(self):
-        """메인 페이지 진입 후 '로그인' -> '티빙 아이디로 로그인' 경로로 이동합니다."""
+    def open_via_flow(self, login_type: str = "tving"):
+        """
+        메인 페이지 진입 후 로그인 경로(티빙 ID 또는 CJ ONE)로 이동합니다.
+        """
         logger.info("메인 페이지 진입 및 로그인 경로 탐색...")
         self.navigate_to(self.MAIN_URL, wait_until="domcontentloaded")
 
@@ -30,8 +33,13 @@ class LoginPage(BasePage):
         self.safe_click(self.NAV_LOGIN_BTN)
         self.page.wait_for_load_state("domcontentloaded")
 
-        logger.info(f"'티빙 아이디로 로그인' 옵션 선택 (Selector: {self.TVING_ID_LINK})")
-        self.safe_click(self.TVING_ID_LINK)
+        if login_type.lower() == "cjone":
+            logger.info(f"'CJ ONE으로 시작하기' 옵션 선택 (Selector: {self.CJONE_ID_LINK})")
+            self.safe_click(self.CJONE_ID_LINK)
+        else:
+            logger.info(f"'티빙 아이디로 로그인' 옵션 선택 (Selector: {self.TVING_ID_LINK})")
+            self.safe_click(self.TVING_ID_LINK)
+
         try:
             self.page.wait_for_load_state("domcontentloaded")
         except Exception:
