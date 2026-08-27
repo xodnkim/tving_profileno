@@ -38,15 +38,17 @@ TVING 웹페이지에 로그인한 뒤, 백엔드 API 응답에서 `profileNo`�
 
 ---
 
-## 2. 파일 구조
+## 2. 파일 구조 (Page Object Model)
+
+유지보수성과 가독성을 위해 UI 제어 로직과 테스트 시나리오를 분리하는 Page Object Model(POM) 패턴을 적용했습니다.
 
 ```text
 tving_auto/
 ├── main.py                  # 과제 기본 실행 스크립트 (POM 기반 E2E 플로우)
 ├── quick.py                 # 단일/배치 빠른 추출 스크립트
 ├── config.py                # CLI 인자 및 터미널 입력 처리
-├── models.py                # 추출 결과 데이터 모델
-├── pages/                   # Page Object Model (페이지별 액션 분리)
+├── models.py                # 추출 결과 데이터 모델 (ProfileInfo, ExtractionResult)
+├── pages/                   # Page Object Model (페이지별 화면 제어)
 │   ├── base_page.py         # 브라우저 공통 제어 및 유틸리티
 │   ├── login_page.py        # 로그인 화면 제어 및 다중 프로필 선택 처리
 │   └── my_page.py           # 마이페이지 진입 및 API 가로채기
@@ -116,11 +118,20 @@ python quick.py -u "아이디" -p "비밀번호" --login-type cjone --profile "�
 python quick.py --file accounts.json
 ```
 
-> **배치 검증 모드 (`--file`)**  
-> 사내 테스트 계정 목록(`accounts.json`)을 읽어 순차적으로 로그인하고, 실제 발급된 `profileNo`가 DB 기준 기대값(`expected_profile_no`)과 일치하는지 비교하여 PASS/FAIL 결과를 출력합니다.  
-> 각 계정별로 `login_type`("tving" 또는 "cjone") 및 `target_profile`을 지정하여 유연하게 검증할 수 있습니다.
+---
 
-`accounts.json` 형식 예시:
+## 4. 배치 검증 모드 (`quick.py --file`)
+
+사내 테스트 계정 목록(`accounts.json`)을 읽어 순차적으로 로그인하고, 실제 발급된 `profileNo`가 DB 기준 기대값(`expected_profile_no`)과 일치하는지 비교하여 PASS/FAIL 결과를 출력합니다.
+
+### 1) 주요 활용 시나리오
+* **정기 헬스체크 배치**: 매일 새벽 사내 테스트 계정 전수 검증 ➡️ 프로필 매핑 오류나 계정 만료 상태를 사전에 감지
+* **배포 후 스모크 테스트**: 신규 배포 후 핵심 계정들의 로그인 및 profileNo 조회가 여전히 정상 동작하는지 신속 검증
+
+### 2) 설정 파일 형식 (`accounts.json`)
+> **검증 원칙**: `expected_profile_no`는 반드시 DB에서 직접 확인한 기준값을 기입해야 올바른 테스트(Test Oracle)가 성립합니다.  
+> 실제 계정 정보가 담긴 `accounts.json`은 보안을 위해 `.gitignore`에 등록되어 있습니다.
+
 ```json
 [
   {
@@ -144,7 +155,7 @@ python quick.py --file accounts.json
 
 ---
 
-## 4. 실행 결과 예시
+## 5. 실행 결과 예시
 
 ### `main.py` 실행 결과 (CJ ONE 다중 프로필 계정 예시)
 ```text
@@ -210,7 +221,7 @@ python quick.py --file accounts.json
 
 ---
 
-## 5. 추가 분석 (네트워크 패킷 분석)
+## 6. 추가 분석 (네트워크 패킷 분석)
 
 과제를 진행하며 실제 네트워크 요청을 분석해본 결과, 다음과 같은 인증 구조를 확인했습니다:
 
