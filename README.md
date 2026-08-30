@@ -2,6 +2,11 @@
 
 TVING 웹페이지에 로그인한 뒤, 백엔드 API 응답에서 `profileNo`를 추출하는 자동화 프로젝트입니다.
 
+> 💡 **핵심 요구사항 구현 위치 (TL;DR)**
+> - **profileNo API 추출 핵심 로직**: [`pages/my_page.py`](pages/my_page.py) (`extract_profile_from_api()`)
+> - **로그인 및 다중 프로필 선택 제어**: [`pages/login_page.py`](pages/login_page.py) (`perform_login()`, `handle_profile_selection()`)
+> - **E2E 실행 진입점**: [`main.py`](main.py) (POM 기반 전체 플로우) / [`quick.py`](quick.py) (단일 및 배치 비교 검증)
+
 ---
 
 ## 1. 주요 구현 포인트
